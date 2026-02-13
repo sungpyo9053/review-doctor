@@ -28,7 +28,37 @@
 **배포**  
 - Vercel (Frontend + Serverless Python)
 
-## 로컬 실행 방법
+## 로컬 실행 방법 (가장 중요!)
+
+### 1. 프로젝트 구조 생성 (최초 1회만)
+프로젝트 폴더를 처음 만들거나 구조를 새로 잡을 때 아래 스크립트를 실행하세요.
+review-doctor-poc/
+├── api/                        # FastAPI 백엔드
+│   ├── main.py                 # FastAPI 앱 메인 파일
+│   ├── requirements.txt        # 필요한 pip 패키지 목록
+│   └── venv/                   # Python 가상환경 (자동 생성)
+│
+├── web/                        # Vite + React 프론트엔드
+│   ├── node_modules/           # npm 패키지 (git ignore)
+│   ├── public/                 # 정적 파일 (favicon 등)
+│   ├── src/                    # React 소스 코드
+│   │   ├── App.jsx             # 메인 컴포넌트 (입력창·버튼·결과 UI)
+│   │   ├── main.jsx            # 앱 진입점
+│   │   ├── index.css           # 전역 스타일
+│   │   └── assets/             # 이미지 등
+│   ├── vite.config.js          # Vite 설정 (proxy 포함)
+│   ├── package.json            # npm 의존성 & 스크립트
+│   ├── package-lock.json
+│   └── .gitignore
+│
+├── init-project.sh             # 구조 생성 스크립트
+├── run.sh                      # 서버 실행 스크립트
+├── .gitignore                  # git 무시 파일
+└── README.md                   # 이 파일
+
+```bash
+chmod +x init-project.sh
+./init-project.sh
 
 ### 백엔드
 ```bash
