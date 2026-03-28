@@ -1,9 +1,9 @@
 import re
 import os
-import csv
 import time
 from datetime import datetime
 from urllib.parse import urlparse
+from collections import Counter
 
 import requests
 from bs4 import BeautifulSoup
@@ -13,10 +13,39 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
+
+# 둘 중 하나만 쓰면 된다.
+# 1) webdriver_manager 자동 사용
 from webdriver_manager.chrome import ChromeDriverManager
 
+# 2) 로컬 chromedriver 직접 경로 사용하고 싶으면 아래 CHROMEDRIVER_PATH에 넣기
+CHROMEDRIVER_PATH = None
+# 예:
+# CHROMEDRIVER_PATH = "/usr/local/bin/chromedriver"
+
+from openpyxl import Workbook
+from openpyxl.chart import LineChart, Reference
+
+
 ALLOWED_HOSTNAME = "m.place.naver.com"
-USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/120.0.0.0 Safari/537.36"
+)
+
+POSITIVE_WORDS = [
+    "맛있", "친절", "좋", "깨끗", "추천", "훌륭", "최고", "재방문",
+    "만족", "가성비", "신선", "부드럽", "정성", "빠르", "넉넉",
+    "쾌적", "세련", "고소", "담백", "깔끔", "푸짐", "든든", "상냥"
+]
+
+NEGATIVE_WORDS = [
+    "별로", "불친절", "느리", "비싸", "짜다", "싱겁", "더럽",
+    "실망", "최악", "재방문 안", "기다림", "불편", "시끄럽",
+    "텁텁", "차갑", "오래", "부족", "아쉽", "실수", "불쾌",
+    "눅눅", "딱딱", "질기", "비위생", "형편없"
+]
 
 
 class ScrapeError(Exception):
@@ -32,8 +61,7 @@ def is_naver_place_url(url: str) -> bool:
     if parsed.scheme not in ["http", "https"]:
         return False
 
-    host = parsed.netloc.lower()
-    return host == ALLOWED_HOSTNAME
+    return parsed.netloc.lower() == ALLOWED_HOSTNAME
 
 
 def fetch_html(url: str, timeout: int = 10, retries: int = 3) -> str:
@@ -60,50 +88,77 @@ def fetch_html(url: str, timeout: int = 10, retries: int = 3) -> str:
     raise ScrapeError(f"fetch_html failed: {last_exc}")
 
 
+def _build_driver_service():
+    if CHROMEDRIVER_PATH:
+        return Service(CHROMEDRIVER_PATH)
+    return Service(ChromeDriverManager().install())
+
+
 def fetch_html_selenium(url: str, timeout: int = 20) -> str:
     if not is_naver_place_url(url):
         raise ScrapeError("Not a m.place.naver.com URL")
 
     options = Options()
-    options.add_argument("--headless=new")
     options.add_argument("--disable-gpu")
+    options.add_argument("--window-size=1920,1080")
+    # 디버깅 중이면 headless 끄는 걸 추천
+    # options.add_argument("--headless")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument(f"user-agent={USER_AGENT}")
+    options.binary_location = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+
+    driver = None
 
     try:
-        chrome_service = Service(ChromeDriverManager().install())
+        print("👉 드라이버 생성")
+        chrome_service = _build_driver_service()
         driver = webdriver.Chrome(service=chrome_service, options=options)
+
+        print("👉 크롬 실행 성공")
         driver.set_page_load_timeout(timeout)
         driver.get(url)
 
-        # 전체 더보기 반복 클릭
-        while True:
+        print("👉 페이지 로딩 완료")
+        time.sleep(3)
+
+        # 더보기 버튼 반복 클릭
+        for _ in range(10):
             try:
-                more_button = WebDriverWait(driver, 5).until(
-                    EC.element_to_be_clickable((By.CSS_SELECTOR, 'a.fvwqf'))
+                more_button = WebDriverWait(driver, 3).until(
+                    EC.element_to_be_clickable((By.CSS_SELECTOR, "a.fvwqf"))
                 )
                 driver.execute_script("arguments[0].click();", more_button)
                 time.sleep(1)
             except Exception:
                 break
 
-        # 리뷰 리스트 로드 대기
-        WebDriverWait(driver, 15).until(
+        print("👉 더보기 클릭 완료")
+
+        # 리뷰 DOM 로드 대기
+        WebDriverWait(driver, 10).until(
             EC.presence_of_element_located(
-                (By.CSS_SELECTOR, "li.place_apply_pui.EjjAW, li.EjjAW, li._3oG8X, li.review_item, div._1km0z")
+                (
+                    By.CSS_SELECTOR,
+                    "li.place_apply_pui.EjjAW, li.EjjAW, li._3oG8X, "
+                    "li.review_item, div._1km0z, div._3QPE6, div._3Rixz"
+                )
             )
         )
 
         time.sleep(1)
         return driver.page_source
+
     except Exception as e:
+        print("🔥 내부 에러:", e)
         raise ScrapeError(f"fetch_html_selenium failed: {e}")
+
     finally:
-        try:
-            driver.quit()
-        except Exception:
-            pass
+        if driver:
+            try:
+                driver.quit()
+            except Exception:
+                pass
 
 
 def _extract_text(node):
@@ -113,10 +168,8 @@ def _extract_text(node):
 
 
 def _extract_rating(item):
-    # 대표적인 네이버 평점 구조 추출
     rating = None
 
-    # CSS class 형식
     star = item.select_one("div.review_score div.star_score span")
     if star is not None:
         star_text = star.get("style", "")
@@ -139,19 +192,16 @@ def _extract_rating(item):
 def _normalize_review_text(text):
     if not text:
         return text
+
     text = text.strip()
 
-    # 본문으로 보이는 곳까지 추출
-    # common tail indicators: '반응 남기기', '방문일'
     m_tail = re.search(r"^(.*?)(?:\s*반응 남기기|\s*방문일).*", text)
     if m_tail:
         text = m_tail.group(1).strip()
 
-    # sometimes starts with '닉네임 리뷰 ...' or '닉네임 리뷰 XX 사진 ...'
     m = re.search(r"^[^\n]+리뷰[^\n]*?\s+(.*)$", text)
     if m and len(m.group(1).strip()) > 5:
         candidate = m.group(1).strip()
-        # 후반에 다시 중복 안내가 있으면 자른다.
         m_tail2 = re.search(r"^(.*?)(?:\s*반응 남기기|\s*방문일).*", candidate)
         if m_tail2:
             candidate = m_tail2.group(1).strip()
@@ -164,28 +214,31 @@ def _normalize_review_text(text):
 def _normalize_review_date(date_text):
     if not date_text:
         return date_text
+
     date_text = date_text.strip()
 
-    # 2026년 1월 28일 수요일 등 형태 탐지
     m = re.search(r"(\d{4})년\s*(\d{1,2})월\s*(\d{1,2})일\s*([월화수목금토일]+요일)", date_text)
     if m:
-        yyyy = int(m.group(1)); mm = int(m.group(2)); dd = int(m.group(3)); dow = m.group(4)
-        return f"{yyyy:04d}{mm:02d}{dd:02d} {dow}"
+        yyyy = int(m.group(1))
+        mm = int(m.group(2))
+        dd = int(m.group(3))
+        dow = m.group(4)
+        return f"{yyyy:04d}-{mm:02d}-{dd:02d} {dow}"
 
-    # 간혹 23.1.28.수 형태
     m2 = re.search(r"(\d{2})\.(\d{1,2})\.(\d{1,2})\.([월화수목금토일])", date_text)
     if m2:
         prefix = int(m2.group(1))
         yyyy = 2000 + prefix if prefix < 70 else 1900 + prefix
-        mm = int(m2.group(2)); dd = int(m2.group(3)); wik = m2.group(4)
-        return f"{yyyy:04d}{mm:02d}{dd:02d} {wik}요일"
+        mm = int(m2.group(2))
+        dd = int(m2.group(3))
+        wik = m2.group(4)
+        return f"{yyyy:04d}-{mm:02d}-{dd:02d} {wik}요일"
 
     return date_text
 
 
 def _extract_tags(item):
     tags = []
-    # 다수의 태그 셀렉터 대응
     tag_selectors = [
         "div.pui__HLNvmI",
         "span._2-GE-",
@@ -200,12 +253,32 @@ def _extract_tags(item):
     return tags
 
 
+def analyze_sentiment_and_keywords(text: str):
+    pos_words = []
+    neg_words = []
+
+    for w in POSITIVE_WORDS:
+        if w in text:
+            pos_words.append(w)
+
+    for w in NEGATIVE_WORDS:
+        if w in text:
+            neg_words.append(w)
+
+    if len(pos_words) > len(neg_words):
+        sentiment = "positive"
+    elif len(neg_words) > len(pos_words):
+        sentiment = "negative"
+    else:
+        sentiment = "neutral"
+
+    return sentiment, pos_words, neg_words
+
+
 def parse_naver_place_reviews(html: str):
     soup = BeautifulSoup(html, "lxml")
 
-    # 네이버 리뷰 아이템 후보
     candidates = []
-
     selectors = [
         "li.place_apply_pui.EjjAW",
         "li.EjjAW",
@@ -225,7 +298,6 @@ def parse_naver_place_reviews(html: str):
             break
 
     if not candidates:
-        # 리뷰 항목이 명확히 감지되지 않으면 리턴
         return {"count": 0, "reviews": []}
 
     reviews = []
@@ -237,8 +309,15 @@ def parse_naver_place_reviews(html: str):
         rating = None
         tags = []
 
-        # 리뷰 텍스트 추출 (가장 정확한 선택자 우선)
-        for x in ["div.pui__vn15t2", "div.review_text", "span._1W6Y3", "span._3oJ5G", "p._1i3d0", "div._1U3gJ", "div._2tkPb"]:
+        for x in [
+            "div.pui__vn15t2",
+            "div.review_text",
+            "span._1W6Y3",
+            "span._3oJ5G",
+            "p._1i3d0",
+            "div._1U3gJ",
+            "div._2tkPb",
+        ]:
             node = item.select_one(x)
             if node:
                 text = _extract_text(node)
@@ -250,25 +329,25 @@ def parse_naver_place_reviews(html: str):
 
         text = _normalize_review_text(text)
 
-        # 작성자
-        author_node = item.select_one("span.pui__uslU0d, span._3hl2F, span._1Gy50, div._3-1M1, span._2s0fL")
+        author_node = item.select_one(
+            "span.pui__uslU0d, span._3hl2F, span._1Gy50, div._3-1M1, span._2s0fL"
+        )
         if author_node:
             author = _extract_text(author_node)
 
-        # 날짜
-        date_node = item.select_one("span.pui__gfuUIT, span._3fM31, span._1Q9DG, time, span._2Aa_p")
+        date_node = item.select_one(
+            "span.pui__gfuUIT, span._3fM31, span._1Q9DG, time, span._2Aa_p"
+        )
         if date_node:
             date = _normalize_review_date(_extract_text(date_node))
 
-        # 평점
         rating = _extract_rating(item)
-
-        # 태그
         tags = _extract_tags(item)
 
-        # 필터: 유효한 리뷰 텍스트가 없는 경우 제외
         if not text:
             continue
+
+        sentiment, pos_words, neg_words = analyze_sentiment_and_keywords(text)
 
         reviews.append({
             "author": author,
@@ -276,6 +355,9 @@ def parse_naver_place_reviews(html: str):
             "tags": tags,
             "date": date,
             "rating": rating,
+            "sentiment": sentiment,
+            "pos_words": pos_words,
+            "neg_words": neg_words,
         })
 
     return {
@@ -284,23 +366,123 @@ def parse_naver_place_reviews(html: str):
     }
 
 
-def save_reviews_to_csv(reviews, directory="testData"):
+def save_reviews_to_excel(reviews, directory="testData"):
     os.makedirs(directory, exist_ok=True)
-    filename = datetime.now().strftime("%y%m%d_%H%M%S") + ".csv"
+    filename = datetime.now().strftime("%y%m%d_%H%M%S") + ".xlsx"
     filepath = os.path.join(directory, filename)
 
-    with open(filepath, mode="w", newline="", encoding="utf-8-sig") as f:
-        writer = csv.DictWriter(f, fieldnames=["author", "text", "tags", "date", "rating"])
-        writer.writeheader()
-        for review in reviews:
-            writer.writerow({
-                "author": review.get("author", ""),
-                "text": review.get("text", ""),
-                "tags": ", ".join(review.get("tags", [])),
-                "date": review.get("date", ""),
-                "rating": review.get("rating", ""),
-            })
+    wb = Workbook()
 
+    # 1. 리뷰 원본 시트
+    ws = wb.active
+    ws.title = "reviews"
+    ws.append([
+        "date", "author", "rating", "sentiment",
+        "pos_words", "neg_words", "tags", "text"
+    ])
+
+    for r in reviews:
+        ws.append([
+            r.get("date", ""),
+            r.get("author", ""),
+            r.get("rating", ""),
+            r.get("sentiment", ""),
+            ", ".join(r.get("pos_words", [])),
+            ", ".join(r.get("neg_words", [])),
+            ", ".join(r.get("tags", [])),
+            r.get("text", ""),
+        ])
+
+    # 2. 키워드 통계 시트
+    ws2 = wb.create_sheet("keyword_summary")
+
+    pos_counter = Counter()
+    neg_counter = Counter()
+
+    for r in reviews:
+        pos_counter.update(r.get("pos_words", []))
+        neg_counter.update(r.get("neg_words", []))
+
+    ws2.append(["positive_keyword", "count", "", "negative_keyword", "count"])
+
+    max_len = max(len(pos_counter), len(neg_counter), 1)
+    pos_items = pos_counter.most_common()
+    neg_items = neg_counter.most_common()
+
+    for i in range(max_len):
+        pos_key, pos_val = ("", "")
+        neg_key, neg_val = ("", "")
+
+        if i < len(pos_items):
+            pos_key, pos_val = pos_items[i]
+        if i < len(neg_items):
+            neg_key, neg_val = neg_items[i]
+
+        ws2.append([pos_key, pos_val, "", neg_key, neg_val])
+
+    # 3. 날짜별 감성 추이 시트
+    ws3 = wb.create_sheet("trend")
+
+    trend = {}
+    for r in reviews:
+        d = r.get("date", "")
+        if not d:
+            d = "unknown"
+
+        date_key = d.split(" ")[0]
+
+        if date_key not in trend:
+            trend[date_key] = {"positive": 0, "negative": 0, "neutral": 0}
+
+        trend[date_key][r.get("sentiment", "neutral")] += 1
+
+    ws3.append(["date", "positive", "negative", "neutral"])
+
+    for d in sorted(trend.keys()):
+        ws3.append([
+            d,
+            trend[d]["positive"],
+            trend[d]["negative"],
+            trend[d]["neutral"],
+        ])
+
+    # 4. 추이 그래프
+    chart = LineChart()
+    chart.title = "Sentiment Trend by Date"
+    chart.y_axis.title = "Count"
+    chart.x_axis.title = "Date"
+    chart.height = 10
+    chart.width = 18
+
+    data = Reference(ws3, min_col=2, max_col=4, min_row=1, max_row=ws3.max_row)
+    cats = Reference(ws3, min_col=1, min_row=2, max_row=ws3.max_row)
+
+    chart.add_data(data, titles_from_data=True)
+    chart.set_categories(cats)
+
+    ws3.add_chart(chart, "F2")
+
+    # 열 너비 조정
+    ws.column_dimensions["A"].width = 16
+    ws.column_dimensions["B"].width = 14
+    ws.column_dimensions["C"].width = 10
+    ws.column_dimensions["D"].width = 12
+    ws.column_dimensions["E"].width = 25
+    ws.column_dimensions["F"].width = 25
+    ws.column_dimensions["G"].width = 25
+    ws.column_dimensions["H"].width = 100
+
+    ws2.column_dimensions["A"].width = 20
+    ws2.column_dimensions["B"].width = 10
+    ws2.column_dimensions["D"].width = 20
+    ws2.column_dimensions["E"].width = 10
+
+    ws3.column_dimensions["A"].width = 14
+    ws3.column_dimensions["B"].width = 10
+    ws3.column_dimensions["C"].width = 10
+    ws3.column_dimensions["D"].width = 10
+
+    wb.save(filepath)
     return filepath
 
 
@@ -316,11 +498,43 @@ def scrape_naver_place_reviews(url: str, use_selenium: bool = False):
     print(f"[INFO] Total reviews found: {len(reviews)}")
 
     for i, r in enumerate(reviews, start=1):
-        print(f"[REVIEW {i}] author={r.get('author')!r}, date={r.get('date')!r}, rating={r.get('rating')!r}, tags={r.get('tags')!r}")
+        print(
+            f"[REVIEW {i}] "
+            f"author={r.get('author')!r}, "
+            f"date={r.get('date')!r}, "
+            f"rating={r.get('rating')!r}, "
+            f"sentiment={r.get('sentiment')!r}, "
+            f"pos_words={r.get('pos_words')!r}, "
+            f"neg_words={r.get('neg_words')!r}"
+        )
         print(f"          content={r.get('text')!r}")
 
-    csv_path = save_reviews_to_csv(reviews, directory=os.path.join(os.getcwd(), "testData"))
-    print(f"[INFO] Reviews saved to CSV: {csv_path}")
+    excel_path = save_reviews_to_excel(reviews, directory=os.path.join(os.getcwd(), "testData"))
+    print(f"[INFO] Reviews saved to Excel: {excel_path}")
 
     return result
 
+
+if __name__ == "__main__":
+    url = "https://m.place.naver.com/restaurant/2051084271/review/visitor"
+
+    print("=== 크롤링 시작 ===")
+
+    try:
+        result = scrape_naver_place_reviews(url, use_selenium=True)
+
+        print("\n=== 결과 요약 ===")
+        print("리뷰 개수:", result["count"])
+
+        for i, r in enumerate(result["reviews"], start=1):
+            print(f"\n[리뷰 {i}]")
+            print("작성자:", r["author"])
+            print("날짜:", r["date"])
+            print("평점:", r["rating"])
+            print("감성:", r["sentiment"])
+            print("긍정 키워드:", r["pos_words"])
+            print("부정 키워드:", r["neg_words"])
+            print("내용:", r["text"])
+
+    except Exception as e:
+        print("에러 발생:", e)
