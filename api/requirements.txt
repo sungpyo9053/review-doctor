@@ -5,3 +5,5 @@ beautifulsoup4
 lxml
 selenium
 webdriver-manager
+pytest
+pytest-cov

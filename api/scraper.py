@@ -2,7 +2,7 @@ import re
 import os
 import time
 from datetime import datetime
-from urllib.parse import urlparse
+from urllib.parse import urlparse, quote
 from collections import Counter
 
 import requests
@@ -276,7 +276,7 @@ def analyze_sentiment_and_keywords(text: str):
 
 
 def parse_naver_place_reviews(html: str):
-    soup = BeautifulSoup(html, "lxml")
+    soup = BeautifulSoup(html, "html.parser")
 
     candidates = []
     selectors = [
@@ -514,6 +514,216 @@ def scrape_naver_place_reviews(url: str, use_selenium: bool = False):
 
     return result
 
+def search_naver_places(query: str, timeout: int = 30) -> list:
+    """
+    네이버 지도에서 업체/가게를 검색합니다 (Selenium 사용).
+    검색 결과 페이지에서 정보를 추출합니다.
+    
+    Args:
+        query: 검색어 (예: '아카시아')
+        timeout: 요청 타임아웃 (초)
+    
+    Returns:
+        검색 결과 리스트. 각 항목은:
+        {
+            'place_id': '12345678',
+            'name': '업체명',
+            'address': '주소',
+            'category': '카테고리',
+            'url': 'https://m.place.naver.com/place/{place_id}'
+        }
+    """
+    if not query or not query.strip():
+        raise ScrapeError("Search query cannot be empty")
+    
+    # 검색어 URL 인코딩
+    encoded_query = quote(query.strip(), safe='')
+    search_url = f"https://m.map.naver.com/search?query={encoded_query}"
+    
+    options = Options()
+    options.add_argument("--headless=new")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument(f"user-agent={USER_AGENT}")
+    
+    try:
+        chrome_service = Service(ChromeDriverManager().install())
+        driver = webdriver.Chrome(service=chrome_service, options=options)
+        driver.set_page_load_timeout(timeout)
+        
+        print(f"[INFO] Navigating to {search_url}")
+        driver.get(search_url)
+        
+        # 검색 결과 로드 대기 (최대 15초)
+        try:
+            WebDriverWait(driver, 15).until(
+                EC.presence_of_all_elements_located(
+                    (By.CSS_SELECTOR, "li.place_item, div[class*='place'], a[href*='/place/']")
+                )
+            )
+        except Exception:
+            # 위 선택자가 없으면 잠시 대기
+            time.sleep(10)
+        
+        html = driver.page_source
+        soup = BeautifulSoup(html, "html.parser")
+        results = []
+        
+        # 모바일 앱 버전의 검색 결과 항목들을 찾기
+        place_items = soup.select(
+            "li.place_item, "
+            "li[class*='place'], "
+            "div[class*='PlaceItem'], "
+            "div[class*='search_item'], "
+            "li[class*='search_result']"
+        )
+        
+        print(f"[DEBUG] Found {len(place_items)} place items")
+        
+        # place_items가 없으면 모든 링크에서 place 관련 검색
+        if not place_items:
+            all_links = soup.select("a[href*='/place/']")
+            print(f"[DEBUG] Found {len(all_links)} links with '/place/'")
+            
+            seen_ids = set()
+            for link in all_links:
+                href = link.get('href', '')
+                place_id_match = re.search(r'/place/(\d+)', href)
+                if place_id_match and place_id_match.group(1) not in seen_ids:
+                    place_id = place_id_match.group(1)
+                    seen_ids.add(place_id)
+                    
+                    name = ""
+                    address = ""
+                    category = ""
+                    
+                    # link의 부모 <li>에서 추가 정보 추출
+                    li_parent = link.find_parent("li")
+                    if li_parent:
+                        # name 추출: <strong class="_item_name_..."> 태그에서
+                        name_tag = li_parent.select_one("strong[class*='_item_name']")
+                        if name_tag:
+                            name = name_tag.get_text(strip=True)
+                        
+                        # category 추출: <em class="_item_category_..."> 태그에서
+                        category_tag = li_parent.select_one("em[class*='_item_category']")
+                        if category_tag:
+                            category = category_tag.get_text(strip=True)
+                        
+                        # address 추출: <button class="_item_address_..."> 태그에서
+                        # button의 text는 "<i>주소 보기</i>실제_주소" 형태이므로, i 태그를 제거하고 나머지 가져오기
+                        address_btn = li_parent.select_one("button[class*='_item_address']")
+                        if address_btn:
+                            btn_text = address_btn.get_text(strip=True)
+                            # "주소 보기" 제거
+                            address = btn_text.replace("주소 보기", "").replace("주소보기", "").strip()
+                    
+                    results.append({
+                        'place_id': place_id,
+                        'name': name,
+                        'address': address,
+                        'category': category,
+                        'url': f'https://m.place.naver.com/place/{place_id}'
+                    })
+        else:
+            # place_items가 있으면 각 항목에서 정보 추출
+            for item in place_items:
+                try:
+                    # 링크 추출
+                    name_link = item.select_one("a[href*='/place/']")
+                    if not name_link:
+                        continue
+                    
+                    href = name_link.get('href', '')
+                    place_id_match = re.search(r'/place/(\d+)', href)
+                    if not place_id_match:
+                        continue
+                    
+                    place_id = place_id_match.group(1)
+                    name = name_link.get_text(strip=True)
+                    address = ""
+                    category = ""
+                    
+                    results.append({
+                        'place_id': place_id,
+                        'name': name,
+                        'address': address,
+                        'category': category,
+                        'url': f'https://m.place.naver.com/place/{place_id}'
+                    })
+                except Exception as e:
+                    print(f"[WARN] Failed to parse search result item: {e}")
+                    continue
+        
+        if not results:
+            print(f"[WARN] No search results found for query: {query}")
+        
+        return results
+    except Exception as e:
+        raise ScrapeError(f"search_naver_places failed: {e}")
+    finally:
+        try:
+            driver.quit()
+        except Exception:
+            pass
+
+
+def _extract_place_details(driver, detail_url: str, timeout: int = 20) -> tuple:
+    """
+    상세 페이지에서 업체명, 주소, 카테고리를 추출합니다.
+    
+    Returns:
+        (name, address, category) 튜플
+    """
+    try:
+        print(f"[DEBUG] Loading detail page: {detail_url}")
+        driver.get(detail_url)
+        time.sleep(1)  # 페이지 로드 대기 (더 짧은 대기)
+        
+        html = driver.page_source
+        soup = BeautifulSoup(html, "html.parser")
+        
+        name = ""
+        address = ""
+        category = ""
+        
+        # 업체명 추출
+        # 페이지 제목에서 " | 지도 | 네이버" 부분 제거
+        title_elem = soup.select_one("h1, h2, [class*='title']")
+        if title_elem:
+            name = title_elem.get_text(strip=True)
+        
+        if not name:
+            # title 태그에서 추출
+            title_tag = soup.find("title")
+            if title_tag:
+                title_text = title_tag.get_text(strip=True)
+                # " | 지도 | 네이버" 제거
+                name = title_text.split(" | ")[0].strip()
+        
+        # 주소와 카테고리 추출 - 텍스트에서 직접 찾기
+        all_text = soup.get_text()
+        
+        # 주소 추출 (정규식으로 "시 구 동" 패턴 찾기)
+        address_patterns = re.findall(r'([가-힣]+시(?:\s+[가-힣]+구)?(?:\s+[가-힣]+동)?(?:\s+[^,\n]{0,30})?)', all_text)
+        if address_patterns:
+            address = address_patterns[0].strip()[:100]  # 최대 100자
+        
+        # 카테고리 추출 - 일반적인 카테고리 키워드 찾기
+        category_keywords = ["카페", "음식점", "식당", "레스토랑", "펍", "바", "병원", "약국", 
+                            "미용실", "헬스", "짐", "학원", "도서관", "영화관", "호텔", "펜션",
+                            "카지노", "극장", "박물관", "공원", "은행", "편의점", "마트"]
+        for keyword in category_keywords:
+            if keyword in all_text:
+                category = keyword
+                break
+        
+        print(f"[DEBUG] Extracted: name={name[:30] if name else ''}..., address={address[:30] if address else ''}..., category={category}")
+        return (name, address, category)
+    except Exception as e:
+        print(f"[DEBUG] Failed to extract place details: {e}")
+        return ("", "", "")
 
 if __name__ == "__main__":
     url = "https://m.place.naver.com/restaurant/2051084271/review/visitor"

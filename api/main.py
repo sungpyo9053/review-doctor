@@ -5,7 +5,7 @@ import requests
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
-from scraper import ScrapeError, is_naver_place_url, scrape_naver_place_reviews
+from scraper import ScrapeError, is_naver_place_url, scrape_naver_place_reviews, search_naver_places
 
 app = FastAPI(title="리뷰닥터 API - POC")
 
@@ -21,6 +21,26 @@ def _check_api_key(key: str):
 
 class ReviewRequest(BaseModel):
     store_name: str
+
+
+class SearchRequest(BaseModel):
+    query: str = Field(..., example="아카시아", description="검색할 가게 이름 또는 검색어")
+    api_key: str = Field(..., example="YOUR_API_KEY")
+
+
+class SearchResult(BaseModel):
+    place_id: str
+    name: str
+    address: str
+    category: str
+    url: str
+
+
+class SearchResponse(BaseModel):
+    status: str
+    query: str
+    count: int
+    results: list[SearchResult]
 
 
 class NaverPlaceScrapeRequest(BaseModel):
@@ -65,7 +85,7 @@ def scrape_naver_place(req: NaverPlaceScrapeRequest):
         raise HTTPException(status_code=400, detail="URL must point to m.place.naver.com")
 
     try:
-        data = scrape_naver_place_reviews(req.url, max_reviews=req.max_reviews, use_selenium=req.use_selenium)
+        data = scrape_naver_place_reviews(req.url, use_selenium=req.use_selenium)
         return {
             "status": "ok",
             "url": req.url,
@@ -73,6 +93,48 @@ def scrape_naver_place(req: NaverPlaceScrapeRequest):
             "reviews": data.get("reviews", []),
             "via_selenium": req.use_selenium,
         }
+    except ScrapeError as e:
+        raise HTTPException(status_code=502, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
+
+
+@app.post("/search/naver-place", response_model=SearchResponse)
+def search_naver_place(req: SearchRequest):
+    """
+    네이버 지도에서 가게/업체를 검색합니다.
+    
+    - 검색어를 입력받아 네이버 지도에서 검색
+    - 검색 결과 목록 반환 (최대 여러 개)
+    - 각 결과에는 업체명, 주소, 카테고리, place_id 포함
+    """
+    _check_api_key(req.api_key)
+
+    query = req.query.strip()
+    if not query:
+        raise HTTPException(status_code=400, detail="Search query cannot be empty")
+
+    try:
+        results = search_naver_places(query)
+        
+        # 결과를 SearchResult 모델로 변환
+        search_results = [
+            SearchResult(
+                place_id=item['place_id'],
+                name=item['name'],
+                address=item['address'],
+                category=item['category'],
+                url=item['url']
+            )
+            for item in results
+        ]
+        
+        return SearchResponse(
+            status="ok",
+            query=query,
+            count=len(search_results),
+            results=search_results
+        )
     except ScrapeError as e:
         raise HTTPException(status_code=502, detail=str(e))
     except Exception as e:
