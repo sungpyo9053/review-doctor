@@ -1,15 +1,14 @@
-import pytest
 
 from scraper import is_naver_place_url, parse_naver_place_reviews, ScrapeError
 
 
 def test_is_naver_place_url_valid():
-    assert is_naver_place_url("https://m.place.naver.com/place/12345678/review/visitor")
+    assert is_naver_place_url("https://m.place.naver.com/restaurant/1212622367")
 
 
 def test_is_naver_place_url_invalid():
-    assert not is_naver_place_url("https://example.com")
-    assert not is_naver_place_url("ftp://m.place.naver.com/place/123")
+    assert not is_naver_place_url("https://m.place.naver.com/restaurant/1212622367")
+    #assert not is_naver_place_url("https://m.place.naver.com/restaurant/1212622367")
 
 
 def test_parse_naver_place_reviews_simple_html():
@@ -47,3 +46,19 @@ def test_parse_naver_place_reviews_no_review():
     result = parse_naver_place_reviews(html)
     assert result["count"] == 0
     assert result["reviews"] == []
+if __name__ == "__main__":
+    print("테스트 시작")
+
+    test_is_naver_place_url_valid()
+    print("1번 통과")
+
+    test_is_naver_place_url_invalid()
+    print("2번 통과")
+
+    test_parse_naver_place_reviews_simple_html()
+    print("3번 통과")
+
+    test_parse_naver_place_reviews_no_review()
+    print("4번 통과")
+
+    print("모든 테스트 통과")

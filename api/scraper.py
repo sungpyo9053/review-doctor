@@ -726,7 +726,7 @@ def _extract_place_details(driver, detail_url: str, timeout: int = 20) -> tuple:
         return ("", "", "")
 
 if __name__ == "__main__":
-    url = "https://m.place.naver.com/restaurant/2051084271/review/visitor"
+    url = "https://m.place.naver.com/restaurant/1316435683/review/visitor"
 
     print("=== 크롤링 시작 ===")
 
