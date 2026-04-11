@@ -1,0 +1,102 @@
+.footerCopy {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--brand-700);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.title {
+  margin: 0;
+  font-size: clamp(2rem, 3vw, 2.7rem);
+  line-height: 1.04;
+  letter-spacing: -0.04em;
+}
+
+.description {
+  margin: 0;
+  color: var(--text-body);
+  max-width: 58ch;
+}
+
+.form {
+  display: grid;
+  gap: 18px;
+}
+
+.formSpacious {
+  gap: 22px;
+}
+
+.section {
+  display: grid;
+  gap: 16px;
+  padding: 22px;
+  border-radius: 22px;
+  background: rgba(237, 244, 251, 0.72);
+  border: 1px solid rgba(9, 30, 66, 0.06);
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.helper {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.actions {
+  display: grid;
+}
+
+.choiceGroup {
+  display: grid;
+  gap: 10px;
+}
+
+.choiceLabel {
+  font-size: 0.94rem;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.choiceButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.checkboxRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.checkboxRow p {
+  margin: 0;
+}
+
+.successBanner {
+  justify-self: start;
+}
+
+@media (max-width: 640px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}

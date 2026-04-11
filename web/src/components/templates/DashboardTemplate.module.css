@@ -1,0 +1,9 @@
+.template {
+  min-height: 100vh;
+  padding: 36px 24px 52px;
+}
+
+.template > * {
+  width: min(1180px, 100%);
+  margin: 0 auto;
+}

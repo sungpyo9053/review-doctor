@@ -1,0 +1,32 @@
+.surface {
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-xl);
+}
+
+.padded {
+  padding: 24px;
+}
+
+.default,
+.panel {
+  background: var(--bg-panel);
+  box-shadow: var(--shadow-soft);
+}
+
+.glass {
+  background: var(--bg-glass);
+  color: var(--text-inverse);
+  box-shadow: var(--shadow-strong);
+  backdrop-filter: blur(16px);
+}
+
+.accent {
+  background:
+    linear-gradient(135deg, rgba(50, 176, 255, 0.24), rgba(8, 183, 154, 0.12)),
+    rgba(255, 255, 255, 0.94);
+  box-shadow: var(--shadow-soft);
+}
+
+.muted {
+  background: var(--bg-muted);
+}

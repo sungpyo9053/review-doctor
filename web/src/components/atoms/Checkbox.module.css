@@ -1,0 +1,6 @@
+.checkbox {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--brand-500);
+}

@@ -1,0 +1,24 @@
+.notice {
+  padding: 16px 18px;
+  border-radius: 18px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+  text-wrap: pretty;
+}
+
+.info {
+  background: rgba(21, 134, 255, 0.1);
+  color: #0f5ab8;
+}
+
+.success {
+  background: rgba(8, 183, 154, 0.12);
+  color: #0b7c69;
+}
+
+.error {
+  background: rgba(222, 66, 91, 0.12);
+  color: #ab2742;
+}

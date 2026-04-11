@@ -1,0 +1,41 @@
+:root {
+  color-scheme: light;
+  font-family:
+    "SUIT Variable",
+    "Pretendard Variable",
+    "Apple SD Gothic Neo",
+    "Noto Sans KR",
+    sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  --bg-dark: #06121d;
+  --bg-dark-strong: #081a2a;
+  --bg-light: #edf4fb;
+  --bg-panel: rgba(255, 255, 255, 0.92);
+  --bg-panel-strong: #ffffff;
+  --bg-muted: #eef5ff;
+  --bg-glass: rgba(13, 31, 50, 0.72);
+  --border-soft: rgba(9, 30, 66, 0.1);
+  --border-strong: rgba(10, 27, 46, 0.18);
+  --text-strong: #08131e;
+  --text-body: #3f4d5c;
+  --text-muted: #64748b;
+  --text-inverse: #f7fbff;
+  --brand-400: #32b0ff;
+  --brand-500: #1586ff;
+  --brand-700: #0658d8;
+  --mint-500: #08b79a;
+  --danger-500: #de425b;
+  --warning-500: #f59e0b;
+  --shadow-soft: 0 20px 50px rgba(6, 18, 29, 0.08);
+  --shadow-strong: 0 28px 80px rgba(3, 16, 31, 0.24);
+  --radius-xl: 28px;
+  --radius-lg: 20px;
+  --radius-md: 16px;
+  --radius-sm: 12px;
+}

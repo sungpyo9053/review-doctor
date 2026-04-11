@@ -1,0 +1,76 @@
+.template {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(440px, 0.9fr);
+}
+
+.panel {
+  padding: 40px;
+}
+
+.featurePanel {
+  background:
+    radial-gradient(circle at top left, rgba(50, 176, 255, 0.22), transparent 28%),
+    linear-gradient(180deg, #071726 0%, #0d253b 100%);
+  color: var(--text-inverse);
+  display: grid;
+  place-items: center;
+}
+
+.formPanel {
+  display: grid;
+  place-items: center;
+}
+
+.featureContent {
+  width: min(520px, 100%);
+  display: grid;
+  gap: 22px;
+}
+
+.featureContent h1 {
+  margin: 0;
+  font-size: clamp(2.4rem, 4vw, 3.8rem);
+  line-height: 1.02;
+  letter-spacing: -0.05em;
+}
+
+.featureContent p {
+  margin: 0;
+  color: rgba(247, 251, 255, 0.76);
+}
+
+.featureList {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: grid;
+  gap: 10px;
+  color: rgba(247, 251, 255, 0.72);
+}
+
+.panelCard {
+  width: min(640px, 100%);
+  display: grid;
+  gap: 22px;
+}
+
+.panelCardFooter {
+  padding-top: 10px;
+  border-top: 1px solid rgba(9, 30, 66, 0.08);
+}
+
+@media (max-width: 900px) {
+  .template {
+    grid-template-columns: 1fr;
+  }
+
+  .panel {
+    padding: 24px;
+  }
+}
+
+@media (max-width: 640px) {
+  .panel {
+    padding: 20px;
+  }
+}

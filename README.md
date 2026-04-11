@@ -1,115 +1,115 @@
-# 리뷰 분석 파이프라인 POC
+# 리뷰닥터
 
-네이버 플레이스 리뷰를 수집하고, 감성분석·임베딩·군집화·경쟁 매장 비교를 통해  
-가게의 강점, 보완 포인트, 실행형 개선 과제를 도출하는 리뷰 분석 POC입니다.
+음식점/매장 리뷰를 한곳에 모아 운영 인사이트를 빠르게 확인하는 풀스택 POC입니다. 프론트엔드는 React + TypeScript 기반으로 재구성했고, MobX 상태 관리, Atomic Design 컴포넌트 계층, 파일 기반 라우팅, CSS Modules 스타일 구조를 적용했습니다.
 
----
+## 기술 스택
 
-## 1. 프로젝트 개요
+| 영역 | 사용 기술 |
+| --- | --- |
+| Frontend | React 19, TypeScript, Vite, React Router, MobX, CSS Modules |
+| UI Architecture | Atomic Design, HTML atom wrapper, component-scoped styles |
+| Backend | FastAPI, Python, Pydantic |
+| Auth | Supabase Auth |
 
-이 프로젝트의 목표는 단순히 리뷰를 긍정/부정으로 나누는 것이 아니라,  
-실제 매장 운영에 도움이 되는 형태의 인사이트를 제공하는 것입니다.
+## 빠른 실행
 
-예를 들어 다음과 같은 질문에 답하는 것을 목표로 합니다.
+### 백엔드
 
-- 우리 매장의 강점은 무엇인가?
-- 고객이 불편하게 느끼는 포인트는 무엇인가?
-- 같은 상권 경쟁 매장과 비교했을 때 어떤 점이 약한가?
-- 사장님이 이번 주에 바로 실행할 수 있는 개선 과제는 무엇인가?
-
----
-
-## 2. 주요 기능
-
-### 2.1 단일 매장 리뷰 분석
-- 네이버 플레이스 리뷰 URL 입력
-- 리뷰 크롤링
-- 텍스트 정제
-- 감성분석
-- 키워드 추출
-- 주제 분류
-- 임베딩 생성
-- 유사 리뷰 군집화
-- 대표 리뷰 및 핵심 주제 추출
-- 내부 진단 리포트 생성
-
-### 2.2 경쟁 매장 비교 분석
-- 내 매장 + 경쟁 매장 리뷰 URL 입력
-- 각 매장별 동일한 기준으로 분석 수행
-- 주제별 언급 비율 비교
-- 경쟁 매장 평균 대비 Gap 계산
-- 상대적 약점 도출
-- 실행형 개선 과제 생성
-
-### 2.3 Streamlit UI
-- 분석 진행 단계 시각화
-- 감성 분포 차트
-- 주제 분포 차트
-- 강점 군집 / 내부 보완 포인트 표시
-- 경쟁 비교 결과 테이블
-- 실행형 개선 과제 카드 표시
-- 리뷰/군집 데이터 원본 확인
-
----
-
-## 3. 왜 필요한가
-
-기존의 단순 키워드 기반 분석은 다음과 같은 한계가 있습니다.
-
-- 문맥 이해가 약함
-- “맛있는데 조금 비싸요” 같은 복합 문장 해석이 어려움
-- 추상적인 개선 제안만 나옴
-- 경쟁 매장 대비 상대적 약점 파악이 어려움
-
-이 POC는 프리트레인 모델과 임베딩 기반 분석을 도입해 다음을 가능하게 합니다.
-
-- 문장 의미 기반 감성분석
-- 의미 유사 리뷰 군집화
-- 주제별 반복 이슈 파악
-- 경쟁 매장 평균 대비 Gap 분석
-- 실행 가능한 운영 개선안 도출
-
----
-
-## 4. 시스템 구성
-
-### 분석 파이프라인
-1. 리뷰 크롤링
-2. 텍스트 정제
-3. 감성분석
-4. 키워드 추출
-5. 주제 분류
-6. 임베딩 생성
-7. 유사 리뷰 군집화
-8. 대표 리뷰 추출
-9. 내부 진단 리포트 생성
-10. 경쟁 매장 비교
-11. 실행형 개선 과제 생성
-
-### 주요 파일
-- `api/pipeline_service.py`
-  - 리뷰 분석 핵심 로직
-- `api/hf_sentiment_test.py`
-  - Streamlit UI 실행 파일
-
----
-
-## 5. 사용 기술
-
-- Python
-- Streamlit
-- Selenium
-- BeautifulSoup
-- transformers
-- sentence-transformers
-- scikit-learn
-- webdriver-manager
-
----
-
-## 6. 설치 방법
-
-### 6.1 가상환경 생성
 ```bash
-python3 -m venv venv
+cd api
 source venv/bin/activate
+pip install -r requirements.txt
+uvicorn main:app --reload --port 8000
+```
+
+### 프론트엔드
+
+```bash
+cd web
+npm install
+npm run dev
+```
+
+Vite 개발 서버는 `http://localhost:5173`에서 실행됩니다. `/api` 요청은 `http://127.0.0.1:8000`으로 프록시되며, 파일 저장 시 HMR과 polling watch로 변경사항이 즉시 반영됩니다.
+
+## 환경 변수
+
+프론트 인증 기능을 사용하려면 `web/.env.local`에 아래 값을 설정합니다.
+
+```bash
+VITE_SUPABASE_URL=https://your-project-id.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
+```
+
+환경 변수가 없어도 앱은 빈 화면으로 죽지 않고 인증 설정 안내를 보여주도록 처리되어 있습니다.
+
+## 프론트엔드 구조
+
+```text
+web/src
+├── app                  # AppRouter, fileRoutes 등 앱 진입/라우팅
+├── components
+│   ├── atoms            # HTML atom wrapper, Button, Input 등 최소 UI 단위
+│   ├── molecules        # FormField, DataTable, StatCard 등 조합 컴포넌트
+│   ├── organisms        # 랜딩/대시보드/관리자 섹션
+│   └── templates        # 페이지 레이아웃 템플릿
+├── data                 # 임시 목데이터
+├── lib                  # 외부 SDK 초기화
+├── pages                # 파일 기반 라우트 진입점
+├── stores               # MobX 전역 상태
+├── styles               # tokens, reset, global
+├── types                # 공유 타입
+└── utils                # 공통 유틸
+```
+
+## 핵심 설계
+
+- Atomic Design 계층은 `atoms -> molecules -> organisms -> templates -> pages` 흐름으로 구성합니다.
+- HTML 태그는 `web/src/components/atoms/html.tsx`의 atom wrapper를 통해 사용합니다.
+- 전역 인증 상태와 관리자 상태는 MobX store에서 관리합니다.
+- `web/src/pages/**/page.tsx` 파일은 자동으로 라우트가 됩니다.
+- `/admin/**`, `/dashboard/**`, `/login`, `/join/**` 접근 제어는 `AppRouter`에서 경로 기준으로 처리합니다.
+- 컴포넌트 스타일은 파일 옆 `*.module.css`로 관리하고, 전역 CSS는 `styles/global.css`에서 `tokens.css`와 `reset.css`만 불러옵니다.
+
+## 라우트 예시
+
+```text
+web/src/pages/index/page.tsx              -> /
+web/src/pages/login/page.tsx              -> /login
+web/src/pages/join/page.tsx               -> /join
+web/src/pages/join/success/page.tsx       -> /join/success
+web/src/pages/dashboard/page.tsx          -> /dashboard
+web/src/pages/admin/page.tsx              -> /admin
+web/src/pages/admin/users/page.tsx        -> /admin/users
+```
+
+## 개발 커맨드
+
+```bash
+cd web
+npm run dev              # 개발 서버
+npm run lint             # ESLint
+npm run typecheck        # TypeScript 검사
+npm run build            # 프로덕션 빌드
+npm run build:watch      # dist 자동 재빌드
+npm run preview          # 빌드 결과 미리보기
+```
+
+## 포함된 화면
+
+- 랜딩 페이지
+- 로그인
+- 회원가입
+- 가입 완료
+- 비밀번호 재설정
+- 사용자 대시보드
+- 관리자 대시보드
+- 관리자 회원 관리
+- 관리자 설정
+- 관리자 가게 관리, 분석 이력, 리포트 placeholder
+
+## 현재 참고사항
+
+- 백엔드 `/analyze`는 POC 더미 리포트를 반환합니다.
+- 관리자 이메일 목록은 현재 브라우저 `localStorage` 기반으로 관리됩니다.
+- 실제 매장/리뷰 API 연결 시에도 기존 Atomic Design 계층과 MobX store 위에 기능을 확장하는 방향을 권장합니다.

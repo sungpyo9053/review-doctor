@@ -1,0 +1,84 @@
+.metricGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.panel,
+.placeholder {
+  display: grid;
+  gap: 18px;
+}
+
+.panel h3,
+.placeholder h2 {
+  margin: 0;
+  font-size: 1.24rem;
+  letter-spacing: -0.03em;
+}
+
+.panel p,
+.placeholder p {
+  margin: 0;
+  color: var(--text-body);
+}
+
+.panelHeading {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.stack {
+  display: grid;
+  gap: 18px;
+}
+
+.emailManager {
+  display: grid;
+  gap: 12px;
+}
+
+.emailManagerRow,
+.emailManagerCreate {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.emailManagerCopy {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.emailManagerCreate input {
+  flex: 1;
+}
+
+.placeholderList {
+  display: grid;
+  gap: 10px;
+  color: var(--text-body);
+}
+
+@media (max-width: 1100px) {
+  .metricGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .metricGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .emailManagerRow,
+  .emailManagerCreate {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

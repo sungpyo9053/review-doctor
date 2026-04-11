@@ -1,0 +1,23 @@
+.statCard {
+  display: grid;
+  gap: 10px;
+}
+
+.label {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.92rem;
+}
+
+.value {
+  margin: 0;
+  font-size: clamp(1.8rem, 3vw, 2.4rem);
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.note {
+  margin: 0;
+  color: var(--text-body);
+  font-size: 0.92rem;
+}

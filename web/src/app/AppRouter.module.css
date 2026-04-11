@@ -1,0 +1,13 @@
+.loading {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(180deg, #071624 0%, #0b2033 100%);
+}
+
+.loadingLabel {
+  margin: 0;
+  color: rgba(247, 251, 255, 0.9);
+  font-size: 1rem;
+  letter-spacing: 0.02em;
+}

@@ -1,0 +1,43 @@
+.brandLockup {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-strong);
+}
+
+.inverse {
+  color: var(--text-inverse);
+}
+
+.icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--brand-400), var(--brand-700));
+  color: white;
+  font-size: 0.94rem;
+  font-weight: 900;
+  box-shadow: 0 14px 32px rgba(6, 88, 216, 0.24);
+}
+
+.copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.title {
+  font-size: 1rem;
+}
+
+.subtitle {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.inverse .subtitle {
+  color: rgba(247, 251, 255, 0.72);
+}

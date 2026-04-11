@@ -1,0 +1,43 @@
+.scroll {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  min-width: 560px;
+  border-collapse: collapse;
+}
+
+.table th,
+.table td {
+  padding: 14px 12px;
+  border-bottom: 1px solid rgba(9, 30, 66, 0.08);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.table th {
+  font-size: 0.84rem;
+  color: var(--text-muted);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.table td {
+  font-size: 0.95rem;
+  color: var(--text-strong);
+}
+
+.empty {
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.alignRight {
+  text-align: right !important;
+}
+
+.alignCenter {
+  text-align: center !important;
+}
